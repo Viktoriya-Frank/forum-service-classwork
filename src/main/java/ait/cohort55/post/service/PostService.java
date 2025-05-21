@@ -16,7 +16,7 @@ public interface PostService {
 
     PostDto updatePost(String id, NewPostDto newPostDto);
 
-    void deletePost(String id);
+    PostDto deletePost(String id);
 
     PostDto addComment(String id, String author, NewCommentDto newCommentDto);
 

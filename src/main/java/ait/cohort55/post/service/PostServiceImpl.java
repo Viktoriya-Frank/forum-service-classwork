@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -47,47 +48,56 @@ public class PostServiceImpl implements PostService {
     @Override
     public PostDto updatePost(String id, NewPostDto newPostDto) {
         Post post = postRepository.findById(id).orElseThrow(PostNotFoundException::new);
-        post.setTitle(newPostDto.getTitle());
-        post.setContent(newPostDto.getContent());
+        String content = newPostDto.getContent();
+        if (content != null) {
+            post.setContent(content);
+        }
+        String title = newPostDto.getTitle();
+        if (title != null) {
+            post.setTitle(title);
+        }
+        Set<String> tags = newPostDto.getTags();
+        if (tags != null) {
+            tags.forEach(post::addTag);
+        }
         post = postRepository.save(post);
         return modelMapper.map(post, PostDto.class);
     }
 
     @Override
-    public void deletePost(String id) {
-        if (!postRepository.existsById(id)) {
-            throw new PostNotFoundException();
-        }
-        postRepository.deleteById(id);
+    public PostDto deletePost(String id) {
+        Post post = postRepository.findById(id).orElseThrow(PostNotFoundException::new);
+        postRepository.delete(post);
+        return modelMapper.map(post, PostDto.class);
     }
 
     @Override
     public PostDto addComment(String id, String author, NewCommentDto newCommentDto) {
         Post post = postRepository.findById(id).orElseThrow(PostNotFoundException::new);
-        Comment comment = modelMapper.map(newCommentDto, Comment.class);
-        comment.setUser(author);
-        post.getComments().add(comment);
+        Comment comment = new Comment(author, newCommentDto.getMessage());
+        post.addComment(comment);
         post = postRepository.save(post);
         return modelMapper.map(post, PostDto.class);
     }
 
     @Override
     public Iterable<PostDto> findPostsByAuthor(String author) {
-        return postRepository.findByAuthorIgnoreCase(author)
-                .stream()
+        return postRepository.findPostsByAuthorIgnoreCase(author)
                 .map(post -> modelMapper.map(post, PostDto.class))
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Override
     public Iterable<PostDto> findPostsByTags(List<String> tags) {
-        return postRepository.findByTagsIn(tags).stream()
+        return postRepository.findPostsByTagsInIgnoreCase(tags)
                 .map(post -> modelMapper.map(post, PostDto.class))
                 .toList();
     }
 
     @Override
     public Iterable<PostDto> findPostsByPeriod(LocalDate from, LocalDate to) {
-        return null;
+        return postRepository.findPostsByDateCreatedBetween(from, to.plusDays(1))
+                .map(post -> modelMapper.map(post, PostDto.class))
+                .toList();
     }
 }
