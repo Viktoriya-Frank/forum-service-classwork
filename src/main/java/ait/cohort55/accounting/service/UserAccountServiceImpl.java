@@ -5,6 +5,7 @@ import ait.cohort55.accounting.dto.RolesDto;
 import ait.cohort55.accounting.dto.UserDto;
 import ait.cohort55.accounting.dto.UserEditDto;
 import ait.cohort55.accounting.dto.UserRegisterDto;
+import ait.cohort55.accounting.dto.exceptions.InvalidDataException;
 import ait.cohort55.accounting.dto.exceptions.UserAlreadyExistsException;
 import ait.cohort55.accounting.dto.exceptions.userNotFoundException;
 import ait.cohort55.accounting.model.UserAccount;
@@ -65,22 +66,30 @@ public class UserAccountServiceImpl implements UserAccountService {
     public RolesDto changeRolesList(String login, String role, boolean isAddRole) {
         UserAccount userAccount = userAccountRepository.findById(login).orElseThrow(userNotFoundException::new);
 
+        boolean res;
+        role = role.toLowerCase();
 
         try {
             if(isAddRole) {
-               userAccount.addRole(role);
+                res = userAccount.addRole(role);
             } else {
-                userAccount.removeRole(role);
+                res = userAccount.removeRole(role);
             }
-        } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Invalid role: " + role);
+        } catch (Exception e) {
+            throw new InvalidDataException("Invalid role" + role);
         }
-       userAccountRepository.save(userAccount);
-        return modelMapper.map(userAccount, RolesDto.class);
+            if (res) {
+                userAccountRepository.save(userAccount);
+            }
+            return modelMapper.map(userAccount, RolesDto.class);
     }
 
-    @Override
+        @Override
     public void changePassword(String login, String newPassword) {
+        UserAccount userAccount = userAccountRepository.findById(login).orElseThrow(userNotFoundException::new);
+        String password = BCrypt.hashpw(newPassword, BCrypt.gensalt());
+        userAccount.setPassword(newPassword);
+        userAccountRepository.save(userAccount);
 
     }
 }
